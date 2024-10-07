@@ -10,7 +10,13 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-const headshots = [
+interface Headshot {
+  id: string;
+  name: string;
+  image: string;
+}
+
+const headshots: Headshot[] = [
   { id: 'halloween2024', name: 'Halloween 2024', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
   { id: 'corporate', name: 'Corporate Headshots', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
   { id: 'dating', name: 'Dating', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
@@ -26,6 +32,22 @@ const headshots = [
   { id: 'americana', name: 'Americana', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
   { id: 'botanical', name: 'Botanical illustration', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
 ]
+;
+
+interface PayPalOrder {
+  purchase_units: {
+    amount: {
+      value: string; // Assuming $10 per headshot
+    }
+  }[];
+}
+
+interface PayPalActions {
+  order: {
+    create: (order: PayPalOrder) => Promise<{ id: string }>;
+    capture: () => Promise<{ payer: { name: { given_name: string } } }>;
+  };
+}
 
 export default function OrderForm() {
   const [email, setEmail] = useState('')
@@ -36,7 +58,7 @@ export default function OrderForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!email || !style || !file || !isPaid) {
       alert('Please fill in all fields and complete payment')
       return
@@ -55,7 +77,7 @@ export default function OrderForm() {
     }
 
     // Save order details
-    const { data: orderData, error: orderError } = await supabase
+    const { error: orderError } = await supabase
       .from('orders')
       .insert({
         user_email: email,
@@ -81,6 +103,7 @@ export default function OrderForm() {
   return (
     <PayPalScriptProvider options={{ "client-id": process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID! }}>
       <form onSubmit={handleSubmit} style={{ maxWidth: '800px', margin: '40px auto', padding: '0 20px' }}>
+        {/* Form Elements */}
         <div style={{ marginBottom: '20px' }}>
           <label htmlFor="email" style={{ display: 'block', marginBottom: '5px' }}>Email</label>
           <input 
@@ -140,17 +163,7 @@ export default function OrderForm() {
           />
         </div>
         <PayPalButtons 
-          createOrder={(data: any, actions: {
-              order: {
-                create: (arg0: {
-                  purchase_units: {
-                    amount: {
-                      value: string // Assuming $10 per headshot
-                    }
-                  }[]
-                }) => any
-              }
-            }) => {
+          createOrder={(data, actions: PayPalActions) => {
             return actions.order.create({
               purchase_units: [{
                 amount: {
@@ -159,10 +172,10 @@ export default function OrderForm() {
               }]
             });
           }}
-          onApprove={(_data: any, actions: { order: any }) => {
-            return actions.order!.capture().then((details: { payer: { name: any } }) => {
+          onApprove={(_data: any, actions: PayPalActions) => {
+            return actions.order.capture().then((details) => {
               setIsPaid(true);
-              alert('Payment completed. Thank you, ' + details.payer.name!.given_name);
+              alert('Payment completed. Thank you, ' + details.payer.name.given_name);
             });
           }}
         />
