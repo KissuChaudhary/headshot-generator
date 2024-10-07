@@ -16,6 +16,7 @@ interface Headshot {
   image: string;
 }
 
+
 const headshots: Headshot[] = [
   { id: 'halloween2024', name: 'Halloween 2024', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
   { id: 'corporate', name: 'Corporate Headshots', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
@@ -163,7 +164,7 @@ export default function OrderForm() {
           />
         </div>
         <PayPalButtons 
-          createOrder={(data, actions: PayPalActions) => {
+          createOrder={(data: any, actions: PayPalActions) => {
             return actions.order.create({
               purchase_units: [{
                 amount: {
