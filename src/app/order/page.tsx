@@ -16,7 +16,6 @@ interface Headshot {
   image: string;
 }
 
-
 const headshots: Headshot[] = [
   { id: 'halloween2024', name: 'Halloween 2024', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
   { id: 'corporate', name: 'Corporate Headshots', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
@@ -32,18 +31,15 @@ const headshots: Headshot[] = [
   { id: 'barbie', name: 'Barbie', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
   { id: 'americana', name: 'Americana', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
   { id: 'botanical', name: 'Botanical illustration', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
-]
-;
+];
 
-interface PurchaseUnit {
-  amount: {
-    value: string;
-  };
+interface PayPalOrderData {
+  [key: string]: unknown;
 }
 
 interface PayPalActions {
   order: {
-    create: (data: { purchase_units: PurchaseUnit[] }) => Promise<{ id: string }>;
+    create: (data: { purchase_units: Array<{ amount: { value: string } }> }) => Promise<{ id: string }>;
     capture: () => Promise<{ payer: { name: { given_name: string } } }>;
   };
 }
@@ -162,7 +158,7 @@ export default function OrderForm() {
           />
         </div>
         <PayPalButtons 
-          createOrder={async (data: { [key: string]: unknown }, actions: PayPalActions) => {
+          createOrder={(data: PayPalOrderData, actions: PayPalActions) => {
             return actions.order.create({
               purchase_units: [{
                 amount: {
@@ -171,7 +167,7 @@ export default function OrderForm() {
               }]
             });
           }}
-          onApprove={async (data: { [key: string]: unknown }, actions: PayPalActions) => {
+          onApprove={(data: PayPalOrderData, actions: PayPalActions) => {
             return actions.order.capture().then((details) => {
               setIsPaid(true);
               alert('Payment completed. Thank you, ' + details.payer.name.given_name);
