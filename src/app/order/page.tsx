@@ -35,46 +35,44 @@ const headshots: Headshot[] = [
 ]
 ;
 
-interface PayPalOrder {
-  purchase_units: {
-    amount: {
-      value: string; // Assuming $10 per headshot
-    }
-  }[];
+interface PurchaseUnit {
+  amount: {
+    value: string;
+  };
 }
 
 interface PayPalActions {
   order: {
-    create: (order: PayPalOrder) => Promise<{ id: string }>;
+    create: (data: { purchase_units: PurchaseUnit[] }) => Promise<{ id: string }>;
     capture: () => Promise<{ payer: { name: { given_name: string } } }>;
   };
 }
 
 export default function OrderForm() {
-  const [email, setEmail] = useState('')
-  const [quantity, setQuantity] = useState(1)
-  const [style, setStyle] = useState('')
-  const [file, setFile] = useState<File | null>(null)
-  const [isPaid, setIsPaid] = useState(false)
+  const [email, setEmail] = useState('');
+  const [quantity, setQuantity] = useState(1);
+  const [style, setStyle] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [isPaid, setIsPaid] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!email || !style || !file || !isPaid) {
-      alert('Please fill in all fields and complete payment')
-      return
+      alert('Please fill in all fields and complete payment');
+      return;
     }
 
     // Upload image
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${Math.random()}.${fileExt}`
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random()}.${fileExt}`;
     const { data: imageData, error: uploadError } = await supabase.storage
       .from('headshots')
-      .upload(fileName, file)
+      .upload(fileName, file);
 
     if (uploadError) {
-      alert('Error uploading image: ' + uploadError.message)
-      return
+      alert('Error uploading image: ' + uploadError.message);
+      return;
     }
 
     // Save order details
@@ -86,20 +84,20 @@ export default function OrderForm() {
         quantity,
         image_url: imageData?.path,
         status: 'paid'
-      })
+      });
 
     if (orderError) {
-      alert('Error saving order: ' + orderError.message)
+      alert('Error saving order: ' + orderError.message);
     } else {
-      alert('Order submitted successfully!')
+      alert('Order submitted successfully!');
       // Reset form
-      setEmail('')
-      setQuantity(1)
-      setStyle('')
-      setFile(null)
-      setIsPaid(false)
+      setEmail('');
+      setQuantity(1);
+      setStyle('');
+      setFile(null);
+      setIsPaid(false);
     }
-  }
+  };
 
   return (
     <PayPalScriptProvider options={{ "client-id": process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID! }}>
@@ -164,7 +162,7 @@ export default function OrderForm() {
           />
         </div>
         <PayPalButtons 
-          createOrder={(data: any, actions: PayPalActions) => {
+          createOrder={async (data: { [key: string]: unknown }, actions: PayPalActions) => {
             return actions.order.create({
               purchase_units: [{
                 amount: {
@@ -173,7 +171,7 @@ export default function OrderForm() {
               }]
             });
           }}
-          onApprove={(_data: any, actions: PayPalActions) => {
+          onApprove={async (data: { [key: string]: unknown }, actions: PayPalActions) => {
             return actions.order.capture().then((details) => {
               setIsPaid(true);
               alert('Payment completed. Thank you, ' + details.payer.name.given_name);
@@ -198,5 +196,5 @@ export default function OrderForm() {
         </button>
       </form>
     </PayPalScriptProvider>
-  )
+  );
 }
