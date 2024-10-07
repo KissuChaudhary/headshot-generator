@@ -1,12 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import Image from 'next/image'
+
+// Initialize Supabase client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 const headshots = [
   { id: 'halloween2024', name: 'Halloween 2024', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
@@ -78,59 +80,77 @@ export default function OrderForm() {
 
   return (
     <PayPalScriptProvider options={{ "client-id": process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID! }}>
-      <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl mx-auto mt-10 px-4">
-        <div>
-          <Label htmlFor="email">Email</Label>
-          <Input 
+      <form onSubmit={handleSubmit} style={{ maxWidth: '800px', margin: '40px auto', padding: '0 20px' }}>
+        <div style={{ marginBottom: '20px' }}>
+          <label htmlFor="email" style={{ display: 'block', marginBottom: '5px' }}>Email</label>
+          <input 
             type="email" 
             id="email" 
             value={email} 
             onChange={(e) => setEmail(e.target.value)} 
             required
+            style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
           />
         </div>
-        <div>
-          <Label>Headshot Style</Label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-2 max-h-96 overflow-y-auto p-2">
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', marginBottom: '5px' }}>Headshot Style</label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px', maxHeight: '400px', overflowY: 'auto', padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }}>
             {headshots.map((headshot) => (
               <div 
                 key={headshot.id} 
-                className={`cursor-pointer rounded-lg overflow-hidden border-2 ${style === headshot.id ? 'border-primary' : 'border-transparent'}`}
                 onClick={() => setStyle(headshot.id)}
+                style={{ 
+                  cursor: 'pointer', 
+                  border: style === headshot.id ? '2px solid blue' : '1px solid #ccc',
+                  borderRadius: '4px',
+                  overflow: 'hidden'
+                }}
               >
                 <Image 
                   src={headshot.image} 
                   alt={headshot.name} 
-                  width={200} 
-                  height={200} 
-                  className="w-full h-auto object-cover"
+                  width={150} 
+                  height={150} 
+                  style={{ width: '100%', height: 'auto', objectFit: 'cover' }}
                 />
-                <p className="text-center text-sm mt-1 p-1">{headshot.name}</p>
+                <p style={{ textAlign: 'center', fontSize: '14px', padding: '5px' }}>{headshot.name}</p>
               </div>
             ))}
           </div>
         </div>
-        <div>
-          <Label htmlFor="quantity">Quantity</Label>
-          <Input 
+        <div style={{ marginBottom: '20px' }}>
+          <label htmlFor="quantity" style={{ display: 'block', marginBottom: '5px' }}>Quantity</label>
+          <input 
             type="number" 
             id="quantity" 
             value={quantity} 
             onChange={(e) => setQuantity(parseInt(e.target.value))} 
             min={1}
+            style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
           />
         </div>
-        <div>
-          <Label htmlFor="reference">Reference Image</Label>
-          <Input 
+        <div style={{ marginBottom: '20px' }}>
+          <label htmlFor="reference" style={{ display: 'block', marginBottom: '5px' }}>Reference Image</label>
+          <input 
             type="file" 
             id="reference" 
             onChange={(e) => setFile(e.target.files?.[0] || null)} 
             accept="image/*"
+            style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
           />
         </div>
         <PayPalButtons 
-          createOrder={(data, actions) => {
+          createOrder={(data: any, actions: {
+              order: {
+                create: (arg0: {
+                  purchase_units: {
+                    amount: {
+                      value: string // Assuming $10 per headshot
+                    }
+                  }[]
+                }) => any
+              }
+            }) => {
             return actions.order.create({
               purchase_units: [{
                 amount: {
@@ -139,14 +159,29 @@ export default function OrderForm() {
               }]
             });
           }}
-          onApprove={(data, actions) => {
-            return actions.order!.capture().then((details) => {
+          onApprove={(_data: any, actions: { order: any }) => {
+            return actions.order!.capture().then((details: { payer: { name: any } }) => {
               setIsPaid(true);
               alert('Payment completed. Thank you, ' + details.payer.name!.given_name);
             });
           }}
         />
-        <Button type="submit" disabled={!isPaid} className="w-full">Submit Order</Button>
+        <button 
+          type="submit" 
+          disabled={!isPaid}
+          style={{
+            width: '100%',
+            padding: '10px',
+            backgroundColor: isPaid ? '#4CAF50' : '#ccc',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: isPaid ? 'pointer' : 'not-allowed',
+            marginTop: '20px'
+          }}
+        >
+          Submit Order
+        </button>
       </form>
     </PayPalScriptProvider>
   )
