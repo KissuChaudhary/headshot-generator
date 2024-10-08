@@ -33,6 +33,7 @@ export default function OrderForm() {
   const [style, setStyle] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [isPaid, setIsPaid] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -42,32 +43,35 @@ export default function OrderForm() {
       return
     }
 
-    // Upload image
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${Math.random()}.${fileExt}`
-    const { data: imageData, error: uploadError } = await supabase.storage
-      .from('headshots')
-      .upload(fileName, file)
+    setIsSubmitting(true)
 
-    if (uploadError) {
-      alert('Error uploading image: ' + uploadError.message)
-      return
-    }
+    try {
+      // Upload image
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Math.random()}.${fileExt}`
+      const { data: imageData, error: uploadError } = await supabase.storage
+        .from('headshots')
+        .upload(fileName, file)
 
-    // Save order details
-    const { data: orderData, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        user_email: email,
-        style,
-        quantity,
-        image_url: imageData?.path,
-        status: 'paid'
-      })
+      if (uploadError) {
+        throw new Error('Error uploading image: ' + uploadError.message)
+      }
 
-    if (orderError) {
-      alert('Error saving order: ' + orderError.message)
-    } else {
+      // Save order details
+      const { error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          user_email: email,
+          style,
+          quantity,
+          image_url: imageData?.path,
+          status: 'paid'
+        })
+
+      if (orderError) {
+        throw new Error('Error saving order: ' + orderError.message)
+      }
+
       alert('Order submitted successfully!')
       // Reset form
       setEmail('')
@@ -75,6 +79,10 @@ export default function OrderForm() {
       setStyle('')
       setFile(null)
       setIsPaid(false)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'An unexpected error occurred')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -158,19 +166,19 @@ export default function OrderForm() {
         />
         <button 
           type="submit" 
-          disabled={!isPaid}
+          disabled={!isPaid || isSubmitting}
           style={{
             width: '100%',
             padding: '10px',
-            backgroundColor: isPaid ? '#4CAF50' : '#ccc',
+            backgroundColor: isPaid && !isSubmitting ? '#4CAF50' : '#ccc',
             color: 'white',
             border: 'none',
             borderRadius: '4px',
-            cursor: isPaid ? 'pointer' : 'not-allowed',
+            cursor: isPaid && !isSubmitting ? 'pointer' : 'not-allowed',
             marginTop: '20px'
           }}
         >
-          Submit Order
+          {isSubmitting ? 'Submitting...' : 'Submit Order'}
         </button>
       </form>
     </PayPalScriptProvider>
