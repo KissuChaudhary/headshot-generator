@@ -10,13 +10,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-interface Headshot {
-  id: string;
-  name: string;
-  image: string;
-}
-
-const headshots: Headshot[] = [
+const headshots = [
   { id: 'halloween2024', name: 'Halloween 2024', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
   { id: 'corporate', name: 'Corporate Headshots', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
   { id: 'dating', name: 'Dating', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
@@ -31,48 +25,37 @@ const headshots: Headshot[] = [
   { id: 'barbie', name: 'Barbie', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
   { id: 'americana', name: 'Americana', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
   { id: 'botanical', name: 'Botanical illustration', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
-];
-
-interface PayPalOrderData {
-  [key: string]: unknown;
-}
-
-interface PayPalActions {
-  order: {
-    create: (data: { purchase_units: Array<{ amount: { value: string } }> }) => Promise<{ id: string }>;
-    capture: () => Promise<{ payer: { name: { given_name: string } } }>;
-  };
-}
+]
 
 export default function OrderForm() {
-  const [email, setEmail] = useState('');
-  const [quantity, setQuantity] = useState(1);
-  const [style, setStyle] = useState('');
-  const [file, setFile] = useState<File | null>(null);
-  const [isPaid, setIsPaid] = useState(false);
+  const [email, setEmail] = useState('')
+  const [quantity, setQuantity] = useState(1)
+  const [style, setStyle] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+  const [isPaid, setIsPaid] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+    e.preventDefault()
+    
     if (!email || !style || !file || !isPaid) {
-      alert('Please fill in all fields and complete payment');
-      return;
+      alert('Please fill in all fields and complete payment')
+      return
     }
 
     // Upload image
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random()}.${fileExt}`;
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${Math.random()}.${fileExt}`
     const { data: imageData, error: uploadError } = await supabase.storage
       .from('headshots')
-      .upload(fileName, file);
+      .upload(fileName, file)
 
     if (uploadError) {
-      alert('Error uploading image: ' + uploadError.message);
-      return;
+      alert('Error uploading image: ' + uploadError.message)
+      return
     }
 
     // Save order details
-    const { error: orderError } = await supabase
+    const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .insert({
         user_email: email,
@@ -80,25 +63,24 @@ export default function OrderForm() {
         quantity,
         image_url: imageData?.path,
         status: 'paid'
-      });
+      })
 
     if (orderError) {
-      alert('Error saving order: ' + orderError.message);
+      alert('Error saving order: ' + orderError.message)
     } else {
-      alert('Order submitted successfully!');
+      alert('Order submitted successfully!')
       // Reset form
-      setEmail('');
-      setQuantity(1);
-      setStyle('');
-      setFile(null);
-      setIsPaid(false);
+      setEmail('')
+      setQuantity(1)
+      setStyle('')
+      setFile(null)
+      setIsPaid(false)
     }
-  };
+  }
 
   return (
     <PayPalScriptProvider options={{ "client-id": process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID! }}>
       <form onSubmit={handleSubmit} style={{ maxWidth: '800px', margin: '40px auto', padding: '0 20px' }}>
-        {/* Form Elements */}
         <div style={{ marginBottom: '20px' }}>
           <label htmlFor="email" style={{ display: 'block', marginBottom: '5px' }}>Email</label>
           <input 
@@ -158,7 +140,7 @@ export default function OrderForm() {
           />
         </div>
         <PayPalButtons 
-          createOrder={(data: PayPalOrderData, actions: PayPalActions) => {
+          createOrder={(data, actions) => {
             return actions.order.create({
               purchase_units: [{
                 amount: {
@@ -167,10 +149,10 @@ export default function OrderForm() {
               }]
             });
           }}
-          onApprove={(data: PayPalOrderData, actions: PayPalActions) => {
-            return actions.order.capture().then((details) => {
+          onApprove={(data, actions) => {
+            return actions.order!.capture().then((details) => {
               setIsPaid(true);
-              alert('Payment completed. Thank you, ' + details.payer.name.given_name);
+              alert('Payment completed. Thank you, ' + details.payer.name!.given_name);
             });
           }}
         />
@@ -192,5 +174,5 @@ export default function OrderForm() {
         </button>
       </form>
     </PayPalScriptProvider>
-  );
+  )
 }
