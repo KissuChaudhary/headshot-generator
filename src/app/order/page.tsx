@@ -1,20 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js"
 import Image from 'next/image'
-
-// Initialize Supabase client with error handling
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables')
-}
-
-const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '')
-
 
 const headshots = [
   { id: 'halloween2024', name: 'Halloween 2024', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
@@ -40,12 +29,25 @@ export default function OrderForm() {
   const [file, setFile] = useState<File | null>(null)
   const [isPaid, setIsPaid] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [supabase, setSupabase] = useState<any>(null)
+
+  useEffect(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (supabaseUrl && supabaseAnonKey) {
+      const supabaseClient = createClient(supabaseUrl, supabaseAnonKey)
+      setSupabase(supabaseClient)
+    } else {
+      console.error('Missing Supabase environment variables')
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!email || !style || !file || !isPaid) {
-      alert('Please fill in all fields and complete payment')
+    if (!email || !style || !file || !isPaid || !supabase) {
+      alert('Please fill in all fields, complete payment, and ensure Supabase is initialized')
       return
     }
 
@@ -172,21 +174,21 @@ export default function OrderForm() {
         />
         <button 
           type="submit" 
-          disabled={!isPaid || isSubmitting}
+          disabled={!isPaid || isSubmitting || !supabase}
           style={{
             width: '100%',
             padding: '10px',
-            backgroundColor: isPaid && !isSubmitting ? '#4CAF50' : '#ccc',
+            backgroundColor: isPaid && !isSubmitting && supabase ? '#4CAF50' : '#ccc',
             color: 'white',
             border: 'none',
             borderRadius: '4px',
-            cursor: isPaid && !isSubmitting ? 'pointer' : 'not-allowed',
+            cursor: isPaid && !isSubmitting && supabase ? 'pointer' : 'not-allowed',
             marginTop: '20px'
           }}
         >
           {isSubmitting ? 'Submitting...' : 'Submit Order'}
         </button>
       </form>
-  </PayPalScriptProvider>
+    </PayPalScriptProvider>
   )
 }
