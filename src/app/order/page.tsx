@@ -5,10 +5,16 @@ import { createClient } from '@supabase/supabase-js'
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js"
 import Image from 'next/image'
 
-// Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Initialize Supabase client with error handling
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('Missing Supabase environment variables')
+}
+
+const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '')
+
 
 const headshots = [
   { id: 'halloween2024', name: 'Halloween 2024', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
@@ -87,7 +93,7 @@ export default function OrderForm() {
   }
 
   return (
-    <PayPalScriptProvider options={{ "client-id": process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID! }}>
+    <PayPalScriptProvider options={{ "client-id": process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || '' }}>
       <form onSubmit={handleSubmit} style={{ maxWidth: '800px', margin: '40px auto', padding: '0 20px' }}>
         <div style={{ marginBottom: '20px' }}>
           <label htmlFor="email" style={{ display: 'block', marginBottom: '5px' }}>Email</label>
@@ -181,6 +187,6 @@ export default function OrderForm() {
           {isSubmitting ? 'Submitting...' : 'Submit Order'}
         </button>
       </form>
-    </PayPalScriptProvider>
+  </PayPalScriptProvider>
   )
 }
