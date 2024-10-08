@@ -26,7 +26,7 @@ export default function OrderForm() {
   const [email, setEmail] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [style, setStyle] = useState('')
-  const [file, setFile] = useState<File | null>(null)
+  const [files, setFiles] = useState<File[]>([])
   const [isPaid, setIsPaid] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [supabase, setSupabase] = useState<any>(null)
@@ -46,7 +46,7 @@ export default function OrderForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!email || !style || !file || !isPaid || !supabase) {
+    if (!email || !style || files.length === 0 || !isPaid || !supabase) {
       alert('Please fill in all fields, complete payment, and ensure Supabase is initialized')
       return
     }
@@ -54,16 +54,19 @@ export default function OrderForm() {
     setIsSubmitting(true)
 
     try {
-      // Upload image
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${Math.random()}.${fileExt}`
-      const { data: imageData, error: uploadError } = await supabase.storage
-        .from('headshots')
-        .upload(fileName, file)
+      // Upload images
+      const uploadPromises = files.map(async (file) => {
+        const fileExt = file.name.split('.').pop()
+        const fileName = `${Math.random()}.${fileExt}`
+        const { data, error } = await supabase.storage
+          .from('headshots')
+          .upload(fileName, file)
 
-      if (uploadError) {
-        throw new Error('Error uploading image: ' + uploadError.message)
-      }
+        if (error) throw error
+        return data?.path
+      })
+
+      const imagePaths = await Promise.all(uploadPromises)
 
       // Save order details
       const { error: orderError } = await supabase
@@ -72,7 +75,7 @@ export default function OrderForm() {
           user_email: email,
           style,
           quantity,
-          image_url: imageData?.path,
+          image_urls: imagePaths,
           status: 'paid'
         })
 
@@ -85,12 +88,18 @@ export default function OrderForm() {
       setEmail('')
       setQuantity(1)
       setStyle('')
-      setFile(null)
+      setFiles([])
       setIsPaid(false)
     } catch (error) {
       alert(error instanceof Error ? error.message : 'An unexpected error occurred')
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setFiles(Array.from(e.target.files))
     }
   }
 
@@ -146,12 +155,13 @@ export default function OrderForm() {
           />
         </div>
         <div style={{ marginBottom: '20px' }}>
-          <label htmlFor="reference" style={{ display: 'block', marginBottom: '5px' }}>Reference Image</label>
+          <label htmlFor="reference" style={{ display: 'block', marginBottom: '5px' }}>Reference Images</label>
           <input 
             type="file" 
             id="reference" 
-            onChange={(e) => setFile(e.target.files?.[0] || null)} 
+            onChange={handleFileChange} 
             accept="image/*"
+            multiple
             style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
           />
         </div>
@@ -174,15 +184,15 @@ export default function OrderForm() {
         />
         <button 
           type="submit" 
-          disabled={!isPaid || isSubmitting || !supabase}
+          disabled={!isPaid || isSubmitting || !email || !style || files.length === 0}
           style={{
             width: '100%',
             padding: '10px',
-            backgroundColor: isPaid && !isSubmitting && supabase ? '#4CAF50' : '#ccc',
+            backgroundColor: isPaid && !isSubmitting && email && style && files.length > 0 ? '#4CAF50' : '#ccc',
             color: 'white',
             border: 'none',
             borderRadius: '4px',
-            cursor: isPaid && !isSubmitting && supabase ? 'pointer' : 'not-allowed',
+            cursor: isPaid && !isSubmitting && email && style && files.length > 0 ? 'pointer' : 'not-allowed',
             marginTop: '20px'
           }}
         >
