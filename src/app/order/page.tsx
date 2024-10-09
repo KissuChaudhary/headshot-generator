@@ -183,7 +183,7 @@ export default function OrderForm() {
         </div>
         {isFormValid && !isPaid && (
           <PayPalButtons 
-            createOrder={(data, actions) => {
+            createOrder={(data: any, actions: any) => {
               return actions.order.create({
                 purchase_units: [{
                   amount: {
@@ -192,10 +192,10 @@ export default function OrderForm() {
                 }]
               });
             }}
-            onApprove={(data, actions) => {
-              return actions.order!.capture().then((details) => {
+            onApprove={(data: any, actions: any) => {
+              return actions.order.capture().then((details: any) => {
                 setIsPaid(true);
-                alert('Payment completed. Thank you, ' + details.payer.name!.given_name);
+                alert('Payment completed. Thank you, ' + details.payer.name.given_name);
               });
             }}
           />
