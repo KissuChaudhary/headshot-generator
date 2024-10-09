@@ -8,6 +8,7 @@ const QUANTITY = 4;
 const MAX_FILES = 10;
 const MAX_TOTAL_SIZE = 10 * 1024 * 1024; // 10MB in bytes
 
+
 const headshots = [
   { id: 'halloween2024', name: 'Halloween 2024', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
   { id: 'corporate', name: 'Corporate Headshots', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
@@ -57,21 +58,29 @@ export default function OrderForm() {
 
     try {
       // Upload reference images
-      const uploadPromises = files.map(async (file) => {
+      const uploadPromises = files.map(async (file, index) => {
         const fileExt = file.name.split('.').pop()
-        const fileName = `${Math.random()}.${fileExt}`
+        const fileName = `${Date.now()}_${index}.${fileExt}`
+        console.log(`Attempting to upload file: ${fileName}`)
+        
         const { data, error } = await supabase.storage
           .from('headshots')
           .upload(fileName, file)
 
-        if (error) throw error
+        if (error) {
+          console.error(`Error uploading file ${fileName}:`, error)
+          throw error
+        }
+        console.log(`Successfully uploaded file: ${fileName}`)
         return data?.path
       })
 
       const imagePaths = await Promise.all(uploadPromises)
 
+      console.log('All files uploaded successfully. Paths:', imagePaths)
+
       // Save order details
-      const { error: orderError } = await supabase
+      const { data, error: orderError } = await supabase
         .from('orders')
         .insert({
           user_email: email,
@@ -80,10 +89,14 @@ export default function OrderForm() {
           reference_image_urls: imagePaths,
           status: 'submitted',
         })
+        .select()
 
       if (orderError) {
+        console.error('Error saving order:', orderError)
         throw new Error('Error saving order: ' + orderError.message)
       }
+
+      console.log('Order saved successfully:', data)
 
       alert('Order submitted successfully!')
       // Reset form
@@ -91,6 +104,7 @@ export default function OrderForm() {
       setStyle('')
       setFiles([])
     } catch (error) {
+      console.error('Submission error:', error)
       alert(error instanceof Error ? error.message : 'An unexpected error occurred')
     } finally {
       setIsSubmitting(false)
