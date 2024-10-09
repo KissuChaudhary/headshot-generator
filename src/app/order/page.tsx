@@ -56,7 +56,7 @@ export default function OrderForm() {
     setIsSubmitting(true)
 
     try {
-      // Upload images
+      // Upload reference images
       const uploadPromises = files.map(async (file) => {
         const fileExt = file.name.split('.').pop()
         const fileName = `${Math.random()}.${fileExt}`
@@ -77,7 +77,7 @@ export default function OrderForm() {
           user_email: email,
           style,
           quantity: QUANTITY,
-          image_urls: imagePaths,
+          reference_image_urls: imagePaths,
           status: 'submitted',
         })
 
