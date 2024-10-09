@@ -5,6 +5,11 @@ import { createClient } from '@supabase/supabase-js'
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js"
 import Image from 'next/image'
 
+const PRICE = 6.99;
+const QUANTITY = 4;
+const MAX_FILES = 10;
+const MAX_TOTAL_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+
 const headshots = [
   { id: 'halloween2024', name: 'Halloween 2024', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
   { id: 'corporate', name: 'Corporate Headshots', image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202024-10-07%20194431-sNo1GpgXeWKWGA8zksIhtQWtusGgOM.png' },
@@ -24,12 +29,12 @@ const headshots = [
 
 export default function OrderForm() {
   const [email, setEmail] = useState('')
-  const [quantity, setQuantity] = useState(1)
   const [style, setStyle] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const [isPaid, setIsPaid] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [supabase, setSupabase] = useState<any>(null)
+  const [fileError, setFileError] = useState('')
 
   useEffect(() => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -46,8 +51,8 @@ export default function OrderForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!email || !style || files.length === 0 || !isPaid || !supabase) {
-      alert('Please fill in all fields, complete payment, and ensure Supabase is initialized')
+    if (!email || !style || files.length < 4 || !isPaid || !supabase) {
+      alert('Please fill in all fields, upload at least 4 images, complete payment, and ensure Supabase is initialized')
       return
     }
 
@@ -74,9 +79,10 @@ export default function OrderForm() {
         .insert({
           user_email: email,
           style,
-          quantity,
+          quantity: QUANTITY,
           image_urls: imagePaths,
-          status: 'paid'
+          status: 'paid',
+          price: PRICE
         })
 
       if (orderError) {
@@ -86,7 +92,6 @@ export default function OrderForm() {
       alert('Order submitted successfully!')
       // Reset form
       setEmail('')
-      setQuantity(1)
       setStyle('')
       setFiles([])
       setIsPaid(false)
@@ -99,102 +104,110 @@ export default function OrderForm() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setFiles(Array.from(e.target.files))
+      const selectedFiles = Array.from(e.target.files)
+      if (selectedFiles.length < 4 || selectedFiles.length > MAX_FILES) {
+        setFileError(`Please select 4-${MAX_FILES} images.`)
+        return
+      }
+
+      const totalSize = selectedFiles.reduce((sum, file) => sum + file.size, 0)
+      if (totalSize > MAX_TOTAL_SIZE) {
+        setFileError('Total file size exceeds 10MB limit.')
+        return
+      }
+
+      setFiles(selectedFiles)
+      setFileError('')
     }
   }
 
+  const isFormValid = email && style && files.length >= 4 && files.length <= MAX_FILES
+
   return (
     <PayPalScriptProvider options={{ "client-id": process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || '' }}>
-      <form onSubmit={handleSubmit} style={{ maxWidth: '800px', margin: '40px auto', padding: '0 20px' }}>
-        <div style={{ marginBottom: '20px' }}>
-          <label htmlFor="email" style={{ display: 'block', marginBottom: '5px' }}>Email</label>
+      <form onSubmit={handleSubmit} className="max-w-4xl mx-auto mt-10 p-6 bg-white rounded-lg shadow-xl">
+        <h1 className="text-2xl font-bold mb-6 text-center">Order Your AI Headshots</h1>
+        <div className="mb-6">
+          <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-900">Email</label>
           <input 
             type="email" 
             id="email" 
             value={email} 
             onChange={(e) => setEmail(e.target.value)} 
             required
-            style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
           />
         </div>
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>Headshot Style</label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px', maxHeight: '400px', overflowY: 'auto', padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }}>
+        <div className="mb-6">
+          <label className="block mb-2 text-sm font-medium text-gray-900">Headshot Style (Choose one)</label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {headshots.map((headshot) => (
               <div 
                 key={headshot.id} 
                 onClick={() => setStyle(headshot.id)}
-                style={{ 
-                  cursor: 'pointer', 
-                  border: style === headshot.id ? '2px solid blue' : '1px solid #ccc',
-                  borderRadius: '4px',
-                  overflow: 'hidden'
-                }}
+                className={`cursor-pointer rounded-lg overflow-hidden border-2 ${style === headshot.id ? 'border-blue-500' : 'border-transparent'}`}
               >
                 <Image 
                   src={headshot.image} 
                   alt={headshot.name} 
-                  width={150} 
-                  height={150} 
-                  style={{ width: '100%', height: 'auto', objectFit: 'cover' }}
+                  width={100} 
+                  height={100} 
+                  className="w-full h-auto object-cover"
                 />
-                <p style={{ textAlign: 'center', fontSize: '14px', padding: '5px' }}>{headshot.name}</p>
+                <p className="text-center text-sm mt-1 p-1">{headshot.name}</p>
               </div>
             ))}
           </div>
         </div>
-        <div style={{ marginBottom: '20px' }}>
-          <label htmlFor="quantity" style={{ display: 'block', marginBottom: '5px' }}>Quantity</label>
-          <input 
-            type="number" 
-            id="quantity" 
-            value={quantity} 
-            onChange={(e) => setQuantity(parseInt(e.target.value))} 
-            min={1}
-            style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
-          />
+        <div className="mb-6">
+          <p className="text-lg font-semibold">Quantity: {QUANTITY} headshots</p>
+          <p className="text-sm text-gray-600">You will receive 4 unique AI-generated headshots</p>
         </div>
-        <div style={{ marginBottom: '20px' }}>
-          <label htmlFor="reference" style={{ display: 'block', marginBottom: '5px' }}>Reference Images</label>
+        <div className="mb-6">
+          <label htmlFor="reference" className="block mb-2 text-sm font-medium text-gray-900">
+            Reference Images (4-10 images, max 10MB total)
+          </label>
           <input 
             type="file" 
             id="reference" 
             onChange={handleFileChange} 
             accept="image/*"
             multiple
-            style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+            required
+            className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none"
           />
+          {fileError && <p className="mt-2 text-sm text-red-600">{fileError}</p>}
         </div>
-        <PayPalButtons 
-          createOrder={(data: any, actions: any) => {
-            return actions.order.create({
-              purchase_units: [{
-                amount: {
-                  value: (quantity * 10).toString() // Assuming $10 per headshot
-                }
-              }]
-            });
-          }}
-          onApprove={(data: any, actions: any) => {
-            return actions.order.capture().then((details: any) => {
-              setIsPaid(true);
-              alert('Payment completed. Thank you, ' + details.payer.name.given_name);
-            });
-          }}
-        />
+        <div className="mb-6">
+          <p className="text-xl font-bold">Total Price: ${PRICE.toFixed(2)}</p>
+        </div>
+        {isFormValid && !isPaid && (
+          <PayPalButtons 
+            createOrder={(data, actions) => {
+              return actions.order.create({
+                purchase_units: [{
+                  amount: {
+                    value: PRICE.toFixed(2)
+                  }
+                }]
+              });
+            }}
+            onApprove={(data, actions) => {
+              return actions.order!.capture().then((details) => {
+                setIsPaid(true);
+                alert('Payment completed. Thank you, ' + details.payer.name!.given_name);
+              });
+            }}
+          />
+        )}
         <button 
           type="submit" 
-          disabled={!isPaid || isSubmitting || !email || !style || files.length === 0}
-          style={{
-            width: '100%',
-            padding: '10px',
-            backgroundColor: isPaid && !isSubmitting && email && style && files.length > 0 ? '#4CAF50' : '#ccc',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: isPaid && !isSubmitting && email && style && files.length > 0 ? 'pointer' : 'not-allowed',
-            marginTop: '20px'
-          }}
+          disabled={!isPaid || isSubmitting || !isFormValid}
+          className={`w-full text-white font-bold py-2 px-4 rounded ${
+            isPaid && !isSubmitting && isFormValid
+              ? 'bg-blue-500 hover:bg-blue-700'
+              : 'bg-gray-400 cursor-not-allowed'
+          }`}
         >
           {isSubmitting ? 'Submitting...' : 'Submit Order'}
         </button>
